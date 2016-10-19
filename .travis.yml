@@ -1,6 +1,49 @@
+sudo: false
 language: rust
-os:
-  - linux
+# necessary for `travis-cargo coveralls --no-sudo`
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev # optional: only required for the --verify flag of coveralls
+
+# run builds for all the trains (and more)
+rust:
+  - nightly
+  - beta
+  # check it compiles on the latest stable compiler
+  - stable
+  # and the first stable one (this should be bumped as the minimum
+  # Rust version required changes)
+  - 1.0.0
+
+# load travis-cargo
+before_script:
+  - |
+      pip install 'travis-cargo<0.2' --user &&
+      export PATH=$HOME/.local/bin:$PATH
+
+# the main build
 script:
-  - cargo test --verbose
-  - cargo doc --no-deps
+  - |
+      travis-cargo build -- --features serde &&
+      travis-cargo test -- --features serde &&
+      travis-cargo bench -- --features serde &&
+      travis-cargo --only stable doc -- --features serde
+after_success:
+  # upload the documentation from the build with stable (automatically only actually
+  # runs on the master branch, not individual PRs)
+  - travis-cargo --only stable doc-upload -- --features serde
+  # measure code coverage and upload to coveralls.io (the verify
+  # argument mitigates kcov crashes due to malformed debuginfo, at the
+  # cost of some speed <https://github.com/huonw/travis-cargo/issues/12>)
+  - travis-cargo coveralls --no-sudo --verify -- --features serde
+
+env:
+  global:
+    # override the default `--features unstable` used for the nightly branch (optional)
+    TRAVIS_CARGO_NIGHTLY_FEATURE: ""
+    # encrypted github token for doc upload (see `GH_TOKEN` link above)
+    secure: lKuJR4VI6OZ+URLMtn+Uyu0/aOh4wia45wmjCaAojL/Qs0mmQEDLWNNCiclv+Nvg2OkmDsl/Sch7MENOnD3eb9X5So+I5DQFF6V6uXKPKSyvjbnHfYKA2FYwzbchILZxjZOjO7y1jKX61UzxxQaVsq31zFnvDTZcoI/yVsHWrS3lOTZ1yatPom7TSDl2yDGMhG1K/Uv3/faLPrwYB7z46+iquJs88kvU0ucBkVXDTyzQnZHRzsSjScCvkqKeVQXkk2OYnYIAq6k/FXYJNUmhNwcGsGTCy3RvWeBxFY7RxiPQ7qHaYq3G8HJLrxVOuSMQofVknXfJzJvnwFVGnsZg+9vHrHQtBY2ijObrmelR1sAgMYkWaoGMYi47szfCWeyhBj7hSRNLXiN3/e9/pb3gDxNCCUpsIIZ2uFwu729xZXEVMsKqN5Hi4r9+635GWNyR8T9MzxqVdrSN7lUz6+shCT0JaVQr+b1/mLEPwEMiaLhOZ6m2evoKcs+rrgYK6FOgqSCLuaX1hyq8A43xxz/cHFMEKMVoIoe+ubEQ6g7n11VljlHFG1VVbBKN928TsdLIPBj/PcPA3BhcIVhghXzU6pUzMYRsfRk00wueIRx47BZsEKy0RjqA3+YvP7BUV+evAburPlRv8acJAlaOq+clXEl8P36EsgfZWIohZutwsvA=
