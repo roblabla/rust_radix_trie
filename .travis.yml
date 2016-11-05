@@ -1,6 +1,30 @@
+sudo: false
 language: rust
+addons:
+    apt:
+        packages:
+            - libcurl4-openssl-dev
+            - libelf-dev
+            - libdw-dev
+            - binutils-dev
+
+rust:
+    - nightly
+    - beta
+    - stable
+    - 1.0.0
 os:
   - linux
+
+before_script:
+    - |
+        cargo install cargo-travis &&
+        export PATH=$HOME/.cargo/bin:$PATH
+
 script:
-  - cargo test --verbose
-  - cargo doc --no-deps
+  - |
+      cargo test --verbose --features serde &&
+      cargo doc --no-deps --features serde
+
+after_success:
+    - cargo coveralls
