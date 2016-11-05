@@ -8,6 +8,9 @@ addons:
             - libdw-dev
             - libssh2-dev
             - binutils-dev
+            - cmake
+        sources:
+            - kalakris-cmake
 
 rust:
     - nightly
